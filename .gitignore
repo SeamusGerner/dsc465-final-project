@@ -1,5 +1,4 @@
-# Dataset (download from Kaggle separately)
-data/*.csv
+# Dataset zip archives only — CSV is committed
 data/*.zip
 
 # Python

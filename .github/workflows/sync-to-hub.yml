@@ -13,6 +13,6 @@ jobs:
         uses: huggingface/hub-sync@v1.0
         with:
           github_repo_id: SeamusGerner/dsc465-final-project
-          huggingface_repo_id: username/repo-name
-          repo_type: space # or 'model' or 'dataset'
+          huggingface_repo_id: SeamusGerner/dsc465-final-project
+          repo_type: 'model'
           hf_token: ${{ secrets.HF_TOKEN }}

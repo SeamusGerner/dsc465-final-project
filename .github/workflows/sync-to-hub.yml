@@ -14,5 +14,5 @@ jobs:
         with:
           github_repo_id: SeamusGerner/dsc465-final-project
           huggingface_repo_id: SeamusGerner/dsc465-final-project
-          repo_type: 'model'
+          repo_type: 'space'
           hf_token: ${{ secrets.HF_TOKEN }}

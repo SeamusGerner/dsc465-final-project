@@ -1,0 +1,41 @@
+# Dataset (download from Kaggle separately)
+data/*.csv
+data/*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.ipynb_checkpoints/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Training intermediates (large)
+models/*.npy
+models/*.parquet
+
+# Keep these in models/
+!models/.gitkeep
+!models/*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Jupyter
+*.ipynb_checkpoints

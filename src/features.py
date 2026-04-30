@@ -8,7 +8,7 @@ CARD_VALUES = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
     '7': 7, '8': 8, '9': 9, '10': 10,
     'T': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 11,
-    '1': 1,  # some datasets encode ace as 1
+    '1': 11,  # blkjckhands.csv encodes Ace as 1 — treat as 11 (downgrade in hand_total)
 }
 
 CARD_RANKS = {
@@ -26,22 +26,39 @@ LOW_CARDS_PER_SHOE = 5 * 4 * DECKS_IN_SHOE    # 2-6 = 120
 
 def card_to_value(card) -> int:
     """Convert a card representation to its blackjack point value (ace = 11)."""
-    if pd.isna(card):
+    if card is None:
         return 0
+    if isinstance(card, float) and pd.isna(card):
+        return 0
+    # 0 used as a "no card" placeholder in blkjckhands.csv
+    try:
+        if int(card) == 0:
+            return 0
+    except (ValueError, TypeError):
+        pass
     s = str(card).strip().upper()
     if s in CARD_VALUES:
         return CARD_VALUES[s]
     try:
         v = int(s)
-        return min(v, 10)  # cap at 10; ace encoded as 1 stays 1
+        if v == 1:
+            return 11  # Ace
+        return min(v, 10)
     except ValueError:
         return 0
 
 
 def card_to_rank(card) -> int:
     """Convert card to rank integer (used for pair detection)."""
-    if pd.isna(card):
+    if card is None:
         return 0
+    if isinstance(card, float) and pd.isna(card):
+        return 0
+    try:
+        if int(card) == 0:
+            return 0
+    except (ValueError, TypeError):
+        pass
     s = str(card).strip().upper()
     if s in CARD_RANKS:
         return CARD_RANKS[s]
@@ -171,7 +188,22 @@ def build_features(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     df['is_soft'] = [int(is_soft(row)) for row in player_cards]
     df['is_pair'] = [int(is_pair(row)) for row in player_cards]
     df['pair_val'] = [pair_value(row) for row in player_cards]
-    df['n_cards'] = [sum(1 for c in row if not (pd.isna(c) if not isinstance(c, str) else False) and str(c).strip() != '') for row in player_cards]
+    def _count_real_cards(row):
+        n = 0
+        for c in row:
+            if c is None:
+                continue
+            if isinstance(c, float) and pd.isna(c):
+                continue
+            try:
+                if int(c) == 0:
+                    continue
+            except (ValueError, TypeError):
+                if str(c).strip() == '':
+                    continue
+            n += 1
+        return n
+    df['n_cards'] = [_count_real_cards(row) for row in player_cards]
 
     # --- Dealer features ---
     df['dealer_upcard_val'] = df[dealer_col].apply(card_to_value)

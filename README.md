@@ -49,9 +49,13 @@ where $s$ is game state and $a$ is action.
 ## Dataset
 
 **Source:** [900000 Hands of Blackjack Results](https://www.kaggle.com/datasets/mojocolors/900000-hands-of-blackjack-results) (Kaggle)
+**File:** `data/blkjckhands.csv` (~59 MB, tracked in Git LFS)
 
-- 900,000 observations, 150,000 unique games, 6 players per game
-- 20 variables: player/dealer cards, actions, win/bust/blackjack flags
+- 900,000 observations, 150,000 unique games, 6 players per game (`Player1`..`Player6`)
+- 20 columns: player cards (`card1`..`card5`), dealer cards (`dealcard1`..`dealcard5`),
+  hand totals (`sumofcards`, `sumofdeal`), outcome flags (`winloss`, `blkjck`,
+  `plybustbeat`, `dlbustbeat`), and payouts (`plwinamt`, `dlwinamt`)
+- Cards are encoded `1`–`10` where **`1` = Ace** and **`10` = any of {10, J, Q, K}**
 
 ---
 
@@ -80,7 +84,18 @@ where $s$ is game state and $a$ is action.
 
 ## Target Labels (Approach A — EV Maximizing)
 
-1. Bucket rows by: `(player_total_bin, dealer_upcard, soft, pair, true_count_bin)`
+The dataset records *outcomes* but not the player's chosen action or a game ID,
+so we infer both:
+
+- **`game_id`**: every 6 consecutive rows = one game (Player1..Player6 cycle)
+- **First action**: from card sequence + payouts
+  - `S` (Stand) when there's no `card3`
+  - `D` (Double) when there are exactly 3 cards AND payout shows 2× stake
+  - `H` (Hit) otherwise
+  - **Split is dropped** — splits aren't recoverable from the row structure
+
+EV labeling pipeline:
+1. Bucket rows by `(player_total_bin, dealer_upcard, soft, pair, true_count_bin)`
 2. Compute mean payout per action within each bucket
 3. Label each row with the highest-EV action in its bucket
 4. Train classifier to predict that label from continuous features
@@ -136,14 +151,14 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2. Place dataset
-# Download from Kaggle and put at: data/blackjack_simulator.csv
+# 2. Dataset is already in the repo at data/blkjckhands.csv (Git LFS)
+# If cloning fresh, run: git lfs pull
 
 # 3. Explore data
 jupyter notebook notebooks/01_eda.ipynb
 
 # 4. Train (uses 200K sample by default; --sample 0 for full dataset)
-python src/train.py --data data/blackjack_simulator.csv --sample 200000
+python src/train.py --data data/blkjckhands.csv --sample 200000
 
 # 5. Evaluate & generate plots
 python src/evaluate.py
@@ -189,10 +204,17 @@ Key metrics: accuracy, macro-F1, simulated EV per hand vs basic strategy.
 
 ## Assumptions & Limitations
 
-- Dataset column names are auto-detected by `src/train.py`; if detection fails, the script prints
-  all column names with instructions to update `detect_schema()`.
-- Card counting features assume a 6-deck shoe and that rows within each game are ordered
-  by player position. If the dataset doesn't preserve that order, count features are approximate.
-- The simulation uses within-dataset EV estimates as a proxy for true game EV, since we cannot
-  observe counterfactual outcomes (what would have happened with a different action).
-- Class imbalance (Hit/Stand dominate vs Double/Split) is handled with `class_weight="balanced"`.
+- **No explicit action column.** The Kaggle dataset records what cards/outcomes
+  occurred but not what action the simulator chose. We infer the player's first
+  action (Hit / Stand / Double) from `card3`/`card4`/`card5` + `plwinamt`/`dlwinamt`.
+  Split is unrecoverable and excluded.
+- **No game_id column.** Inferred as `row_index // 6`. Verified by the fact that
+  `PlayerNo` cycles `Player1`..`Player6` deterministically.
+- **Card encoding.** `1` = Ace (treated as 11 by default, downgraded to 1 to
+  avoid bust). `10` collapses {10, J, Q, K} — pair detection treats them all
+  as identical 10s, which is correct for basic strategy.
+- **Card counting features** assume a 6-deck shoe and that rows within each game
+  are ordered by player position.
+- **The simulation** uses within-dataset EV estimates as a proxy for true game EV,
+  since we cannot observe counterfactual outcomes.
+- **Class imbalance** (Hit/Stand dominate over Double) is handled with `class_weight="balanced"`.

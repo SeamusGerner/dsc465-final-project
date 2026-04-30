@@ -1,8 +1,6 @@
-# Pin exact versions after training — run:
-#   pip freeze | grep -E "scikit-learn|pandas|numpy|joblib|gradio"
-# and replace the versions below.
-gradio>=4.0.0
-scikit-learn>=1.3.0
+# Pinned to match training environment.
+gradio==4.44.0
+scikit-learn==1.8.0
 pandas>=2.0.0
 numpy>=1.24.0
-joblib>=1.3.0
+joblib>=1.5.0
